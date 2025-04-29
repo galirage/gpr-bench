@@ -3,7 +3,7 @@ import os
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from helper import perform_statistical_test, parse_metadata
+from helper import perform_statistical_test_between_prompts, parse_metadata
 
 # ===== EDIT HERE =====
 MODEL_PATH_LIST = [
@@ -142,19 +142,35 @@ def visualize_results(df: pd.DataFrame, score_column: str, output_dir: str) -> N
         print(f"📌 {pt.capitalize()}: {overall_means[i]:.2f}")
     print(f"📏 Difference: {overall_means[1] - overall_means[0]:.2f} ({((overall_means[1] - overall_means[0]) / overall_means[0]) * 100:+.1f}%)")
 
-def main() -> None:
-    df = load_and_prepare_data(MODEL_PATH_LIST)
+def create_markdown_of_statistical_test_results(df: pd.DataFrame, score_column: str) -> None:
+    """
+    Create a markdown file with statistical test results and print summary to console.
 
-    score_column = "eval_result_conciseness_scores"
+    Args:
+        df (pd.DataFrame): Dataframe
+        score_column (str): Name of the score column to analyze
 
-    stat, p_value, effect_size, test_name = perform_statistical_test(df, score_column)
+    Returns:
+        None
+    """
+    os.makedirs("./reports", exist_ok=True)
 
-    print(f"\n📈 {test_name} Results:")
-    print(f"📊 Statistic: {stat:.4f}")
-    print(f"🔍 p-value: {p_value:.4f}")
+    # Calculate statistics
+    test_result = perform_statistical_test_between_prompts(df, score_column)
+    stat = test_result.statistic
+    p_value = test_result.p_value
+    effect_size = test_result.effect_size
+    test_name = test_result.method
 
+    # Calculate means for each prompt type
+    default_mean = df[df['prompt_type'] == 'default'][score_column].mean()
+    concise_mean = df[df['prompt_type'] == 'concise'][score_column].mean()
+    difference = concise_mean - default_mean
+    percent_change = (difference / default_mean) * 100
+
+    # Determine effect size interpretation
     if test_name.startswith("Independent t-test"):
-        print(f"📏 Effect size (Cohen's d): {effect_size:.4f}")
+        effect_size_type = "Cohen's d"
         if abs(effect_size) < 0.2:
             effect_size_interpretation = "Negligible effect"
         elif abs(effect_size) < 0.5:
@@ -164,7 +180,7 @@ def main() -> None:
         else:
             effect_size_interpretation = "Large effect"
     else:
-        print(f"📏 Effect size (r): {effect_size:.4f}")
+        effect_size_type = "r"
         if abs(effect_size) < 0.1:
             effect_size_interpretation = "Negligible effect"
         elif abs(effect_size) < 0.3:
@@ -174,21 +190,70 @@ def main() -> None:
         else:
             effect_size_interpretation = "Large effect"
 
+    # Print results to console
+    print(f"\n📈 {test_name} Results:")
+    print(f"📊 Statistic: {stat:.4f}")
+    print(f"🔍 p-value: {p_value:.4f}")
+    print(f"📏 Effect size ({effect_size_type}): {effect_size:.4f}")
     print(f"📝 Effect size interpretation: {effect_size_interpretation}")
 
     if p_value < 0.05:
         print("\n✅ Conclusion: Statistically significant difference found (p < 0.05)")
-        if df[df['prompt_type'] == 'concise'][score_column].mean() > df[df['prompt_type'] == 'default'][score_column].mean():
-            print("📈 The Concise prompt has significantly higher conciseness scores compared to the Default prompt.")
+        if concise_mean > default_mean:
+            print("📈 The Concise prompt has significantly higher scores compared to the Default prompt.")
         else:
-            print("📉 The Concise prompt has significantly lower conciseness scores compared to the Default prompt.")
+            print("📉 The Concise prompt has significantly lower scores compared to the Default prompt.")
     else:
         print("\n⚠️ Conclusion: No statistically significant difference found (p >= 0.05)")
-        print("⚖️ There is no significant difference in conciseness scores between the Concise and Default prompts.")
+        print("⚖️ There is no significant difference in scores between the Concise and Default prompts.")
 
-    output_dir = "./figure/statistical_test/"
+    # Create markdown content
+    markdown_content = f"""# Statistical Test Results for {score_column.replace('eval_result_', '').replace('_scores', '').capitalize()}
+
+## Test Information
+- **Test Type**: {test_name}
+- **Statistic**: {stat:.4f}
+- **p-value**: {p_value:.4f}
+- **Effect Size**: {effect_size:.4f}
+- **Effect Size Interpretation**: {effect_size_interpretation}
+
+## Mean Scores by Prompt Type
+- **Default Prompt**: {default_mean:.2f}
+- **Concise Prompt**: {concise_mean:.2f}
+- **Difference**: {difference:.2f} ({percent_change:+.1f}%)
+
+## Conclusion
+"""
+
+    if p_value < 0.05:
+        markdown_content += "✅ **Statistically significant difference found (p < 0.05)**\n\n"
+        if concise_mean > default_mean:
+            markdown_content += "📈 The Concise prompt has significantly higher scores compared to the Default prompt."
+        else:
+            markdown_content += "📉 The Concise prompt has significantly lower scores compared to the Default prompt."
+    else:
+        markdown_content += "⚠️ **No statistically significant difference found (p >= 0.05)**\n\n"
+        markdown_content += "⚖️ There is no significant difference in scores between the Concise and Default prompts."
+
+    # Save markdown file
+    score_name = score_column.replace("eval_result_", "").replace("_scores", "")
+    output_path = f"./reports/{score_name}_statistical_test_results.md"
+    with open(output_path, "w") as f:
+        f.write(markdown_content)
+
+    print(f"\n📝 Markdown report saved to {output_path}")
+
+def main() -> None:
+    df = load_and_prepare_data(MODEL_PATH_LIST)
+    score_column = "eval_result_conciseness_scores"
+
+    # Create visualization
+    output_dir = "./figures/statistical_test/"
     visualize_results(df, score_column, output_dir)
     print(f"\n🖼️ Visualization results saved to {output_dir}")
+
+    # Create statistical test results and markdown report
+    create_markdown_of_statistical_test_results(df, score_column)
 
 if __name__ == "__main__":
     main()

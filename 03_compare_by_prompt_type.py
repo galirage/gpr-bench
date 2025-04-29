@@ -1,6 +1,4 @@
 import os
-import json
-import ast
 
 import numpy as np
 import pandas as pd
@@ -29,7 +27,8 @@ def main(model_path_list: list[str]) -> None:
         None
     """
     input_dir_path = "./benchmark/"
-    output_dir_path = "./figure/compare_by_prompt_type/"
+    output_dir_path = "./figures/compare_by_prompt_type/"
+    tables_dir_path = "./tables/compare_by_prompt_type/"
 
     dfs = []
     for model_path in model_path_list:
@@ -64,6 +63,7 @@ def main(model_path_list: list[str]) -> None:
     df_concat[eval_result_columns] = df_concat[eval_result_columns].astype(float)
 
     os.makedirs(output_dir_path, exist_ok=True)
+    os.makedirs(tables_dir_path, exist_ok=True)
     score_columns = [col for col in df_concat.columns if col.startswith("eval_result_") and col.endswith("_scores")]
 
     for language in df_concat['language'].unique():
@@ -131,6 +131,59 @@ def main(model_path_list: list[str]) -> None:
             plt.close()
 
     print("\n🥳 All figures generated successfully.")
+
+    # Create tables for paper
+    print("\n📊 Creating tables for paper...")
+
+    # Create combined statistics for all languages
+    for score_column in score_columns:
+        score_name = score_column.replace("eval_result_", "").replace("_scores", "")
+        score_name = score_name.lower()
+
+        # Statistics by language, model, and prompt type combination
+        combined_stats = df_concat.groupby(['language', 'model_name', 'prompt_type'])[score_column].agg([
+            ('mean', 'mean'),
+            ('std', 'std'),
+            ('min', 'min'),
+            ('max', 'max'),
+            ('median', 'median'),
+            ('count', 'count')
+        ]).reset_index()
+
+        # Convert language names to English
+        combined_stats['language'] = combined_stats['language'].apply(lambda x: x.capitalize())
+
+        # Export to Excel
+        with pd.ExcelWriter(os.path.join(tables_dir_path, f"all_languages_{score_name}_by_prompt_type_statistics.xlsx")) as writer:
+            combined_stats.to_excel(writer, sheet_name='Combined Statistics', index=False)
+
+        print(f"Created combined table for {score_name}")
+
+    # Create skill-based statistics for all languages
+    for score_column in score_columns:
+        score_name = score_column.replace("eval_result_", "").replace("_scores", "")
+        score_name = score_name.lower()
+
+        # Statistics by language, model, prompt type, and skill combination
+        skill_stats = df_concat.groupby(['language', 'model_name', 'prompt_type', 'skill'])[score_column].agg([
+            ('mean', 'mean'),
+            ('std', 'std'),
+            ('min', 'min'),
+            ('max', 'max'),
+            ('median', 'median'),
+            ('count', 'count')
+        ]).reset_index()
+
+        # Convert language names to English
+        skill_stats['language'] = skill_stats['language'].apply(lambda x: x.capitalize())
+
+        # Export to Excel
+        with pd.ExcelWriter(os.path.join(tables_dir_path, f"all_languages_{score_name}_by_prompt_type_skill_statistics.xlsx")) as writer:
+            skill_stats.to_excel(writer, sheet_name='Skill Statistics', index=False)
+
+        print(f"Created skill-based table for {score_name}")
+
+    print("\n📊 All tables generated successfully.")
 
 if __name__ == "__main__":
     main(MODEL_PATH_LIST)
