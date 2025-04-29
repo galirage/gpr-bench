@@ -12,6 +12,15 @@ from openevals.prompts import CORRECTNESS_PROMPT, CONCISENESS_PROMPT
 EVALUATOR_MODEL_NAME = "gpt-4o-mini"
 EVALUATOR_LANGUAGE_LIST = ["english", "japanese"]
 
+GENERATOR_MODEL_NAME = "gpt-4o-mini-2024-07-18"
+# GENERATOR_MODEL_NAME = "o3-mini-2025-01-31"
+# GENERATOR_MODEL_NAME = "o4-mini-2025-04-16"
+
+GENERATOR_SYSTEM_PROMPT = "You are a helpful assistant"
+# GENERATOR_SYSTEM_PROMPT = "You are a helpful assistant. Please answer the question in a concise manner."
+
+GENERATOR_MAX_COMPLETION_TOKENS = 16384
+
 # ========================================================
 # Function to generate an answer from a prompt using a specific model (CUSTOMIZE BY YOURSELF)
 def generate_answer(user_prompt: str) -> str:
@@ -26,9 +35,9 @@ def generate_answer(user_prompt: str) -> str:
         >>> generate_answer("What is the capital of France?")
         "Paris"
     """
-    model_name = "gpt-4o-mini"
-    system_prompt = "You are a helpful assistant."
-    max_completion_tokens = 16384
+    model_name = GENERATOR_MODEL_NAME
+    system_prompt = GENERATOR_SYSTEM_PROMPT
+    max_completion_tokens = GENERATOR_MAX_COMPLETION_TOKENS
 
     client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
@@ -44,7 +53,7 @@ def generate_answer(user_prompt: str) -> str:
 
 # ========================================================
 
-def main():
+def main() -> None:
     # Load the environment variables
     load_dotenv()
 
@@ -62,13 +71,19 @@ def main():
     df = df[df['language'].isin(EVALUATOR_LANGUAGE_LIST)]
 
     # Save the DataFrame to an Excel file
-    df.to_excel(f"gpr-bench-loaddata-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.xlsx", index=False)
+    # df.to_excel(f"gpr-bench-loaddata-{datetime.now().strftime('%Y-%m-%d-%H-%M-%S')}.xlsx", index=False)
 
     # Extract the prompts and answers
     prompts = df["prompt"].to_list()
     answers = df["answer"].to_list()
     skills = df["skill"].to_list()
     languages = df["language"].to_list()
+    generator_metadata = {
+        "model_name": GENERATOR_MODEL_NAME,
+        "system_prompt": GENERATOR_SYSTEM_PROMPT,
+        "max_completion_tokens": GENERATOR_MAX_COMPLETION_TOKENS
+    }
+    generator_metadata_list = [generator_metadata] * len(prompts)
 
     # Process prompts and get answers
     answers_in_target_model = []
@@ -134,6 +149,7 @@ def main():
         "answer": answers,
         "skill": skills,
         "language": languages,
+        "generator_metadata": generator_metadata_list,
         "answer_in_target_model": answers_in_target_model,
         "eval_result_correctness_scores": eval_result_correctness_scores,
         "eval_result_correctness_comments": eval_result_correctness_comments,
