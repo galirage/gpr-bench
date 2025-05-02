@@ -132,16 +132,14 @@ def main(model_path_list: list[str]) -> None:
 
     print("\n🥳 All figures generated successfully.")
 
-    # Create tables for paper
-    print("\n📊 Creating tables for paper...")
-
-    # Create combined statistics for all languages
+    # Create prompt type-based statistics tables
+    print("\n📊 Creating prompt type-based statistics...")
     for score_column in score_columns:
         score_name = score_column.replace("eval_result_", "").replace("_scores", "")
         score_name = score_name.lower()
 
-        # Statistics by language, model, and prompt type combination
-        combined_stats = df_concat.groupby(['language', 'model_name', 'prompt_type'])[score_column].agg([
+        # prompt type-based statistics
+        prompt_type_stats = df_concat.groupby(['model_name', 'prompt_type'])[score_column].agg([
             ('mean', 'mean'),
             ('std', 'std'),
             ('min', 'min'),
@@ -150,38 +148,11 @@ def main(model_path_list: list[str]) -> None:
             ('count', 'count')
         ]).reset_index()
 
-        # Convert language names to English
-        combined_stats['language'] = combined_stats['language'].apply(lambda x: x.capitalize())
+        # output to Excel file
+        with pd.ExcelWriter(os.path.join(tables_dir_path, f"table_compare_by_prompt_type_{score_name}.xlsx")) as writer:
+            prompt_type_stats.to_excel(writer, sheet_name='Prompt Type Statistics', index=False)
 
-        # Export to Excel
-        with pd.ExcelWriter(os.path.join(tables_dir_path, f"all_languages_{score_name}_by_prompt_type_statistics.xlsx")) as writer:
-            combined_stats.to_excel(writer, sheet_name='Combined Statistics', index=False)
-
-        print(f"Created combined table for {score_name}")
-
-    # Create skill-based statistics for all languages
-    for score_column in score_columns:
-        score_name = score_column.replace("eval_result_", "").replace("_scores", "")
-        score_name = score_name.lower()
-
-        # Statistics by language, model, prompt type, and skill combination
-        skill_stats = df_concat.groupby(['language', 'model_name', 'prompt_type', 'skill'])[score_column].agg([
-            ('mean', 'mean'),
-            ('std', 'std'),
-            ('min', 'min'),
-            ('max', 'max'),
-            ('median', 'median'),
-            ('count', 'count')
-        ]).reset_index()
-
-        # Convert language names to English
-        skill_stats['language'] = skill_stats['language'].apply(lambda x: x.capitalize())
-
-        # Export to Excel
-        with pd.ExcelWriter(os.path.join(tables_dir_path, f"all_languages_{score_name}_by_prompt_type_skill_statistics.xlsx")) as writer:
-            skill_stats.to_excel(writer, sheet_name='Skill Statistics', index=False)
-
-        print(f"Created skill-based table for {score_name}")
+        print(f"Created tables for {score_name}")
 
     print("\n📊 All tables generated successfully.")
 

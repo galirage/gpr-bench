@@ -106,16 +106,14 @@ def main(model_path_list: list[str]) -> None:
 
     print("\n🥳 All figures generated successfully.")
 
-    # Create tables for paper
-    print("\n📊 Creating tables for paper...")
-
-    # Create combined statistics for all languages
+    # Create model-based statistics tables
+    print("\n📊 Creating model-based statistics...")
     for score_column in score_columns:
         score_name = score_column.replace("eval_result_", "").replace("_scores", "")
         score_name = score_name.lower()
 
-        # Statistics by language and model combination
-        combined_stats = df_concat.groupby(['language', 'model_name'])[score_column].agg([
+        # model-based statistics
+        model_stats = df_concat.groupby('model_name')[score_column].agg([
             ('mean', 'mean'),
             ('std', 'std'),
             ('min', 'min'),
@@ -124,22 +122,8 @@ def main(model_path_list: list[str]) -> None:
             ('count', 'count')
         ]).reset_index()
 
-        # Convert language names to English
-        combined_stats['language'] = combined_stats['language'].apply(lambda x: x.capitalize())
-
-        # Export to Excel
-        with pd.ExcelWriter(os.path.join(tables_dir_path, f"all_languages_{score_name}_statistics.xlsx")) as writer:
-            combined_stats.to_excel(writer, sheet_name='Combined Statistics', index=False)
-
-        print(f"Created combined table for {score_name}")
-
-    # Create skill-based statistics for all languages
-    for score_column in score_columns:
-        score_name = score_column.replace("eval_result_", "").replace("_scores", "")
-        score_name = score_name.lower()
-
-        # Statistics by language, model, and skill combination
-        skill_stats = df_concat.groupby(['language', 'model_name', 'skill'])[score_column].agg([
+        # skill-based statistics
+        skill_stats = df_concat.groupby(['model_name', 'skill'])[score_column].agg([
             ('mean', 'mean'),
             ('std', 'std'),
             ('min', 'min'),
@@ -148,14 +132,23 @@ def main(model_path_list: list[str]) -> None:
             ('count', 'count')
         ]).reset_index()
 
-        # Convert language names to English
-        skill_stats['language'] = skill_stats['language'].apply(lambda x: x.capitalize())
+        # language-based statistics
+        language_stats = df_concat.groupby(['model_name', 'language'])[score_column].agg([
+            ('mean', 'mean'),
+            ('std', 'std'),
+            ('min', 'min'),
+            ('max', 'max'),
+            ('median', 'median'),
+            ('count', 'count')
+        ]).reset_index()
 
-        # Export to Excel
-        with pd.ExcelWriter(os.path.join(tables_dir_path, f"all_languages_{score_name}_skill_statistics.xlsx")) as writer:
+        # output to Excel file
+        with pd.ExcelWriter(os.path.join(tables_dir_path, f"table_compare_by_model_{score_name}.xlsx")) as writer:
+            model_stats.to_excel(writer, sheet_name='Model Statistics', index=False)
             skill_stats.to_excel(writer, sheet_name='Skill Statistics', index=False)
+            language_stats.to_excel(writer, sheet_name='Language Statistics', index=False)
 
-        print(f"Created skill-based table for {score_name}")
+        print(f"Created tables for {score_name}")
 
     print("\n📊 All tables generated successfully.")
 
