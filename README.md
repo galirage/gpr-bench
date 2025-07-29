@@ -22,8 +22,36 @@ GPR-bench is a package that provides a framework for regression testing of gener
 
 - Python 3.10 or higher
 - OpenAI API key
+- HuggingFace account and token (for accessing the gated dataset)
 
 ## Installation
+
+### Prerequisites
+
+1. **Install uv** (Python package manager):
+
+   ```bash
+   # Option 1: Using curl
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   
+   # Option 2: Using pip
+   pip install uv
+   ```
+
+2. **HuggingFace Authentication** (Required for accessing the gated dataset):
+
+   Since `galirage/gpr-bench` is a gated dataset, you need to authenticate with HuggingFace.
+
+   **Login via HuggingFace CLI (recommended)**
+
+   Please follow the instructions on the official website:  
+   [https://huggingface.co/docs/huggingface_hub/en/guides/cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
+
+   **Alternative:**  
+   You can obtain your HuggingFace token and set the environment variable `HUGGINGFACE_HUB_TOKEN`.  
+   Visit [https://huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) to get your token.
+
+### Setup
 
 1. Clone the repository:
 
