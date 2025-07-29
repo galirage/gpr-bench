@@ -44,6 +44,10 @@ GPR-bench is a package that provides a framework for regression testing of gener
 
    **Login via HuggingFace CLI (recommended)**
 
+   ```bash
+   uv run huggingface login
+   ```
+
    Please follow the instructions on the official website:  
    [https://huggingface.co/docs/huggingface_hub/en/guides/cli](https://huggingface.co/docs/huggingface_hub/en/guides/cli)
 
